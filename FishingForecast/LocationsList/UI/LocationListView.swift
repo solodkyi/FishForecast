@@ -28,6 +28,7 @@ struct LocationCard: View {
     struct Data: Identifiable {
         let id: UUID
         let name: String
+        let color: Color
         let weatherData: WeatherData?
     
         struct WeatherData { 
@@ -42,8 +43,8 @@ struct LocationCard: View {
     private var cardGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                cardData.scoreColor.opacity(0.8),
-                cardData.scoreColor.opacity(0.4)
+                cardData.color.opacity(0.8),
+                cardData.color.opacity(0.4)
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -52,7 +53,6 @@ struct LocationCard: View {
     
     var body: some View {
         ZStack {
-            // Card background
             RoundedRectangle(cornerRadius: 20)
                 .fill(cardData.weatherData != nil ? cardGradient : LinearGradient(
                     gradient: Gradient(colors: [Color.gray.opacity(0.3), Color.gray.opacity(0.1)]),
@@ -63,14 +63,12 @@ struct LocationCard: View {
             
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
-                    // Location name
                     Text(cardData.name)
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                         .multilineTextAlignment(.leading)
                     
-                    // Additional info
                     if let weather = cardData.weatherData {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
@@ -87,7 +85,7 @@ struct LocationCard: View {
                                 if let windSpeed = weather.windSpeed {
                                     Image(systemName: "wind")
                                         .foregroundColor(.secondary)
-                                    Text("\(windSpeed, specifier: "%.1f") m/s")
+                                    Text(String(format: "%.1f m/s", windSpeed))
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                 }
@@ -112,7 +110,6 @@ struct LocationCard: View {
                 
                 Spacer()
                 
-                // Fishing score badge
                 VStack {
                     ZStack {
                         Circle()
@@ -125,7 +122,7 @@ struct LocationCard: View {
                                 Text("\(fishingScore)")
                                     .font(.title)
                                     .fontWeight(.bold)
-                                    .foregroundColor(cardData.scoreColor)
+                                    .foregroundColor(cardData.color)
                                 
                                 Text("/ 10")
                                     .font(.caption)
@@ -150,9 +147,6 @@ struct LocationCard: View {
         }
         .frame(minHeight: 120)
         .contentShape(Rectangle())
-        .onTapGesture {
-            // Handle card tap - can navigate to detail view
-        }
     }
 }
 
@@ -160,9 +154,34 @@ struct LocationCard: View {
     LocationListView(cards: FishingLocation.mocks.map(\.asLocationCardData))
 }
 
-extension LocationCard.Data {
-     var scoreColor: Color {
-        guard let score = weatherData?.fishingScore else { return Color.gray }
+fileprivate extension FishingLocation {
+    var asLocationCardData: LocationCard.Data {
+        if let forecast = forecast {
+            return LocationCard.Data(
+                id: id,
+                name: name,
+                color: scoreColor,
+                weatherData: .init(
+                    fishingScore: forecast.fishingScore,
+                    temperature: Int(forecast.temperature),
+                    windSpeed: forecast.windSpeed,
+                    moonPhase: forecast.moonPhase.rawValue.capitalized
+                )
+            )
+        } else {
+            return LocationCard.Data(
+                id: id,
+                name: name,
+                color: scoreColor,
+                weatherData: nil
+            )
+        }
+    }
+}
+
+extension FishingLocation {
+    var scoreColor: Color {
+        guard let score = forecast?.fishingScore else { return Color.gray }
         
         switch score {
         case 0...2:
@@ -177,29 +196,6 @@ extension LocationCard.Data {
             return Color.blue
         default:
             return Color.gray
-        }
-    }
-}
-
-fileprivate extension FishingLocation {
-    var asLocationCardData: LocationCard.Data {
-        if let forecast = forecast {
-            return LocationCard.Data(
-                id: id,
-                name: name,
-                weatherData: .init(
-                    fishingScore: forecast.fishingScore,
-                    temperature: Int(forecast.temperature),
-                    windSpeed: forecast.windSpeed,
-                    moonPhase: forecast.moonPhase.rawValue.capitalized
-                )
-            )
-        } else {
-            return LocationCard.Data(
-                id: id,
-                name: name,
-                weatherData: nil
-            )
         }
     }
 }
